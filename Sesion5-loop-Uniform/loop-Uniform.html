@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>loop Uniform</title>
+</head>
+<body onload="start()">
+    <canvas id="mycanvas" height="480" width="640"></canvas>
+</body>
+</html>
+
+<script type="text/javascript">
+    /** @type {HTMLCanvasElement} */
+    var canvas;
+    /** @type {WebGLRenderingContext} */
+    var gl;
+
+    var VERTEX_SOURCE = `#version 300 es 
+        in vec2 in_position;
+        in vec3 in_color;
+        out vec3 o_color;
+        void main(){
+            o_color = in_color;
+            gl_Position = vec4(in_position.x, in_position.y, 0, 1);
+        }
+    `;
+
+    var FRAGMENT_SOURCE= `#version 300 es 
+        precision mediump float;
+        out vec4 color;
+        in vec3 o_color;
+
+        void main(){
+            color = vec4(o_color.xyz, 1);
+        }
+
+    `;
+
+    var program;
+    var vbo_position;
+    var vbo_color;
+    var in_position_loc;
+    var in_color_loc;
+
+    function start(){
+        canvas=document.getElementById('mycanvas');
+        gl=canvas.getContext('webgl2');
+
+        if(!gl){
+            console.error('ERROR: no se pudo iniciar webgl');
+        }
+
+        console.log(gl.getParameter(gl.VERSION));
+        console.log(gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
+
+        // compilando vertexShader
+        var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        if(!vertexShader){
+            console.error('ERROR: no se pudo crear el vertex shader');
+            return
+        }
+        gl.shaderSource(vertexShader, VERTEX_SOURCE);
+        gl.compileShader(vertexShader);
+
+        var compiled= gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+        if(!compiled){
+            var error = gl.getShaderInfoLog(vertexShader);
+            console.error(`ERROR: compilacion del vertexShader ${error}`)
+            return;
+        }
+
+        // compilando fragmentShader
+        var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        if(!fragmentShader){
+            console.error('ERROR: no se pudo crear el vertex shader');
+            return
+        }
+        gl.shaderSource(fragmentShader, FRAGMENT_SOURCE);
+        gl.compileShader(fragmentShader);
+
+        var compiled= gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
+        if(!compiled){
+            var error = gl.getShaderInfoLog(fragmentShader);
+            console.error(`ERROR: compilacion del fragmentShader "${error}"`)
+            return;
+        }
+
+        // programa de shader para alojar los shader en la tarjeta de video
+        program = gl.createProgram();
+        if(!program){
+            console.error('ERROR: no se creo el programa para alojar los shaders');
+            return;
+        }
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if(!linked){
+            console.error(`ERROR: ${gl.getProgramInfoLog(program)}`);
+            return;
+        }
+
+        // borrar y ejecutar
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+        gl.useProgram(program);
+
+        // obteniendo variables de los shaders
+        in_position_loc= gl.getAttribLocation(program, "in_position");
+        in_color_loc= gl.getAttribLocation(program,"in_color");
+        if(in_position_loc < 0 || in_color_loc < 0){
+            console.error(`ERROR: al capturar la variables del shader,
+            si es menor a 0 fallo la captura:
+            in_position: ${in_position_loc}
+            in_color: ${in_color_loc}`);
+            return;
+        }
+
+        //crear buffer
+        vbo_position = gl.createBuffer();
+        vbo_color = gl.createBuffer();
+        if(!vbo_position || !vbo_color){
+            console.error(`ERROR: al crear Buffers, valores: 
+            vbo_position: ${vbo_position}
+            vbo_color: ${vbo_color}`);
+            return;
+        }
+        var positions= new Float32Array([
+            0, 0.5,     // vertice1
+            -0.5, -0.5, // vertice2
+            0.5, -0.5   // vertice3
+        ]);
+        var colors= new Float32Array([
+            1, 0, 0, // vertice1
+            0, 1, 0, // vertice2
+            0, 0, 1  // vertice3
+        ]);
+
+        // enlazando e iniciando buffer data
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_position);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_color);
+        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
+        gl.clearColor(0,0,0,1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // configurando el envío del buffer data
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_position); // vuelta a enlazar el buffer de posicion (2 coordenadas por vertice xy)
+        gl.vertexAttribPointer(in_position_loc, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(in_position_loc);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo_color); // vuelta a enlazar el buffer de colores (3 coordenadas por vertice rgb)
+        gl.vertexAttribPointer(in_color_loc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(in_color_loc);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    }
+</script>
