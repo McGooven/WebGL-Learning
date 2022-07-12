@@ -144,6 +144,10 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo_color);
         gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
 
+        draw();
+    }
+
+    function draw(){
         gl.clearColor(0,0,0,1);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -157,5 +161,6 @@
 
         gl.drawArrays(gl.TRIANGLES, 0, 3);
 
+        window.requestAnimationFrame(draw);
     }
 </script>
